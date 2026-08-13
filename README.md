@@ -11,6 +11,7 @@ $ localmw pull --extensions
 $ localmw pull --interactive
 $ localmw switch
 $ localmw cleanup
+$ localmw repo extensions/GlobalBlocking
 ```
 
 ## Install
@@ -314,6 +315,65 @@ Branches merged locally are removed with `git branch -d`; branches whose change 
 localmw only uses after Gerrit has confirmed the change is `MERGED`. Your default branch is never
 a candidate, and neither is the branch you currently have checked out.
 
+### `localmw repo`
+
+A close-up on a single repository, and the odd sharp tool for tidying one up. Where `status` gives
+you a line per repository across the whole install, `repo` gives you everything about one.
+
+`TARGET` names the repository the way `-o/--only` does — a name, a kind, or the full path:
+
+```console
+localmw repo core                              # a close-up on core
+localmw repo GlobalBlocking                    # the extension, by its short name
+localmw repo extensions/GlobalBlocking         # or by its full path
+localmw repo extensions/GlobalBlocking --json  # the same, machine-readable
+```
+
+```console
+$ localmw repo extensions/GlobalBlocking
+/home/you/git/mediawiki
+extensions/GlobalBlocking · extension
+  Path              /home/you/git/mediawiki/extensions/GlobalBlocking
+  Gerrit            mediawiki/extensions/GlobalBlocking
+  Origin            ssh://you@gerrit.wikimedia.org:29418/mediawiki/extensions/GlobalBlocking
+  Branch            review/1104782 (default is master)
+  Upstream          origin/master · 2 behind
+  Working tree      ?1 · 1 untracked file
+  Last commit       9ed58e1 Fix the thing (You, 3 days ago)
+  review/ branches  1 branch · review/1104782
+```
+
+Exactly one repository must match, so an ambiguous name (or a bare `extensions`) is an error that
+lists the candidates. Naming a repository explicitly **ignores the configured `exclude` list**, so
+one you have otherwise hidden from the bulk commands can still be inspected by name. Like `status`,
+it fetches from origin first so the "behind" count is meaningful; pass `--no-fetch` to skip that.
+
+It can also put one repository straight:
+
+```console
+localmw repo GlobalBlocking --tidy-untracked   # git clean -df, after showing and confirming
+localmw repo GlobalBlocking --reset            # git reset --hard origin/master
+localmw repo GlobalBlocking --reset --tidy-untracked   # back to pristine
+```
+
+`--tidy-untracked` removes untracked files and directories (`git clean -df`); it lists exactly what
+will go and asks first. Ignored files are left in place. `--reset` runs `git reset --hard` against
+`origin/master` (or `origin/main`), throwing away local commits and uncommitted changes to tracked
+files — it tells you what is at stake and asks first. Given both, it resets before it tidies, which
+leaves the checkout matching origin with nothing untracked left over. `-n/--dry-run` shows what
+either would do without touching anything, and `-y/--yes` skips the prompt.
+
+| Flag | What it does |
+| --- | --- |
+| `--tidy-untracked` | remove untracked files and directories (`git clean -df`) |
+| `--reset` | reset the current branch hard to `origin/master` (or `origin/main`) |
+| `--fetch / --no-fetch` | fetch from origin first (default: fetch) |
+| `-n, --dry-run` | show what an action would do, changing nothing |
+| `-y, --yes` | do not ask before an action changes anything |
+| `--json` | emit the detail view as JSON (cannot be combined with an action) |
+
+Exits non-zero if an action failed.
+
 ## Configuration
 
 `~/.config/localmw/config.json`, or `$LOCALMW_CONFIG_DIR/config.json`, or
@@ -387,11 +447,12 @@ public changes on gerrit.wikimedia.org.
 - git is invoked with `GIT_TERMINAL_PROMPT=0` and, unless you set your own `GIT_SSH_COMMAND`,
   `ssh -oBatchMode=yes`. Repositories are processed in parallel with piped output, so a password
   or host-key prompt would otherwise hang invisibly; this way it fails with a clear message.
-- Nothing is ever pushed, reset, or committed on your behalf, and no remote is modified. Two
-  things can lose work, and both ask before doing so: `localmw cleanup` deletes local branches,
-  and `localmw switch --discard-changes` throws away uncommitted changes. Without that flag,
-  `switch` only ever moves a repository whose working tree is clean, and `pull` only ever
-  fast-forwards one.
+- Nothing is ever pushed or committed on your behalf, and no remote is modified. A few things can
+  lose local work, and every one of them asks before doing so: `localmw cleanup` deletes local
+  branches, `localmw switch --discard-changes` throws away uncommitted changes, and `localmw repo`
+  can reset a repository (`--reset`) or delete its untracked files (`--tidy-untracked`). Left to
+  their defaults, `switch` only ever moves a repository whose working tree is clean, and `pull`
+  only ever fast-forwards one.
 
 ## Development
 

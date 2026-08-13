@@ -256,3 +256,43 @@ def test_git_error_detail_skips_hints():
 def test_run_reports_a_timeout(repo: Path):
     with pytest.raises(gitutil.GitError, match="timed out"):
         gitutil.run(repo, ["-c", "core.pager=cat", "log", "--all"], timeout=0)
+
+
+def test_clean_lists_then_removes_untracked_files(repo: Path):
+    fixtures.write(repo, "scratch.txt", "junk\n")
+    fixtures.write(repo, "debris/note.txt", "more junk\n")
+
+    would = gitutil.clean(repo, dry_run=True)
+    assert "scratch.txt" in would
+    assert any(entry.startswith("debris/") for entry in would)
+    assert (repo / "scratch.txt").exists()
+
+    removed = gitutil.clean(repo, dry_run=False)
+    assert "scratch.txt" in removed
+    assert not (repo / "scratch.txt").exists()
+    assert not (repo / "debris").exists()
+
+
+def test_clean_leaves_tracked_changes_alone(repo: Path):
+    fixtures.write(repo, "README.md", "local edit\n")
+    assert gitutil.clean(repo, dry_run=True) == []
+    assert (repo / "README.md").read_text() == "local edit\n"
+
+
+def test_reset_hard_moves_the_branch_and_drops_changes(repo: Path):
+    fixtures.commit(repo, "local only", name="local.txt")
+    fixtures.write(repo, "README.md", "uncommitted\n")
+    assert gitutil.read_state(repo).ahead == 1
+
+    gitutil.reset_hard(repo, "origin/master")
+
+    state = gitutil.read_state(repo)
+    assert state.ahead == 0
+    assert state.dirty is False
+    assert not (repo / "local.txt").exists()
+
+
+def test_remote_url_reads_origin(repo: Path):
+    assert gitutil.remote_url(repo).endswith("Echo")
+    solo = fixtures.init_repo(repo.parent / "solo")
+    assert gitutil.remote_url(solo) is None

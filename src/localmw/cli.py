@@ -11,6 +11,7 @@ from .commands.cleanup import cleanup_command
 from .commands.configcmd import config_group
 from .commands.listcmd import list_command
 from .commands.pull import pull_command
+from .commands.repo import repo_command
 from .commands.status import status_command
 from .commands.switch import switch_command
 from .config import Config, ConfigError
@@ -69,6 +70,7 @@ def cli(
       localmw pull              # fast-forward core, extensions and skins
       localmw switch            # put repositories back on master/main
       localmw cleanup           # bin review/* branches that have merged
+      localmw repo core         # a close-up on one repository
       localmw config show       # see the current settings
     """
     ui.set_color(no_color)
@@ -91,6 +93,7 @@ cli.add_command(list_command)
 cli.add_command(pull_command)
 cli.add_command(switch_command)
 cli.add_command(cleanup_command)
+cli.add_command(repo_command)
 cli.add_command(config_group)
 
 

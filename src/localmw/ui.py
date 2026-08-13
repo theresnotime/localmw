@@ -163,3 +163,13 @@ def plural(count: int, singular: str, plural_form: str | None = None) -> str:
 
 def join_parts(parts: Iterable[str]) -> str:
     return " · ".join(part for part in parts if part)
+
+
+def join_and(parts: Iterable[str]) -> str:
+    """``["a", "b"]`` -> ``"a and b"``; a plain comma list for three or more."""
+    items = [part for part in parts if part]
+    if len(items) <= 1:
+        return items[0] if items else ""
+    if len(items) == 2:
+        return f"{items[0]} and {items[1]}"
+    return ", ".join(items[:-1]) + f" and {items[-1]}"

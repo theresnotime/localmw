@@ -272,6 +272,37 @@ def update_submodules(path: Path) -> None:
     run(path, ["submodule", "update", "--init", "--recursive"], timeout=NETWORK_TIMEOUT)
 
 
+def reset_hard(path: Path, ref: str) -> None:
+    """Move the current branch to ``ref`` and match the working tree to it (``git reset --hard``).
+
+    This discards uncommitted changes to tracked files and any commits the branch has that ``ref``
+    does not. Untracked files are left alone; use :func:`clean` for those.
+    """
+    run(path, ["reset", "--hard", ref], timeout=WORKTREE_TIMEOUT)
+
+
+def clean(path: Path, *, dry_run: bool = False) -> list[str]:
+    """Remove untracked files and directories (``git clean -d``), returning the paths affected.
+
+    With ``dry_run`` nothing is deleted; the returned list is what removal would take. Ignored
+    files are left in place either way, since ``-x`` is not passed.
+    """
+    args = ["clean", "-d", "--dry-run" if dry_run else "--force"]
+    output = out(path, args, timeout=WORKTREE_TIMEOUT)
+    removed: list[str] = []
+    for line in output.splitlines():
+        for prefix in ("Would remove ", "Removing "):
+            if line.startswith(prefix):
+                removed.append(line[len(prefix) :].strip())
+                break
+    return removed
+
+
+def remote_url(path: Path, remote: str = "origin") -> str | None:
+    """The configured URL of ``remote``, or ``None`` if it has none."""
+    return out(path, ["config", "--get", f"remote.{remote}.url"], check=False) or None
+
+
 def count_commits(path: Path, base: str, tip: str) -> int:
     """How many commits ``tip`` has that ``base`` does not."""
     raw = out(path, ["rev-list", "--count", f"{base}..{tip}"], check=False)

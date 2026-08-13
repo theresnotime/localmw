@@ -32,7 +32,7 @@ def invoke(runner: CliRunner, config_dir: Path):
 def test_help_lists_the_commands(invoke):
     result = invoke("--help")
     assert result.exit_code == 0
-    for command in ("status", "list", "pull", "switch", "cleanup", "config"):
+    for command in ("status", "list", "pull", "switch", "cleanup", "repo", "config"):
         assert command in result.output
 
 
