@@ -25,6 +25,7 @@ ENV_PREFIX = "LOCALMW_"
 ENV_CONFIG_DIR = f"{ENV_PREFIX}CONFIG_DIR"
 
 DEFAULT_GERRIT_URL = "https://gerrit.wikimedia.org/r"
+DEFAULT_CODESEARCH_URL = "https://codesearch.wmcloud.org"
 PULL_STRATEGIES = ("ff-only", "rebase", "merge")
 
 #: Extra environment variable aliases, purely for convenience.
@@ -107,6 +108,12 @@ SCHEMA: tuple[Field, ...] = (
         "Gerrit HTTP password (Settings > HTTP Credentials). Optional; anonymous reads work for public changes.",
         _parse_optional_str,
         secret=True,
+    ),
+    Field(
+        "codesearch.url",
+        DEFAULT_CODESEARCH_URL,
+        "Base URL of Wikimedia Codesearch, used by 'localmw codesearch'.",
+        _parse_str,
     ),
     Field(
         "pull.strategy",
@@ -361,6 +368,10 @@ class Config:
         if not isinstance(url, str) or not url.startswith(("http://", "https://")):
             problems.append(f"gerrit.url must be an http(s) URL (got {url!r})")
 
+        url = self.get("codesearch.url")
+        if not isinstance(url, str) or not url.startswith(("http://", "https://")):
+            problems.append(f"codesearch.url must be an http(s) URL (got {url!r})")
+
         return problems
 
     # -- typed accessors -------------------------------------------------
@@ -381,6 +392,10 @@ class Config:
     @property
     def gerrit_http_password(self) -> str | None:
         return self.get("gerrit.http_password")
+
+    @property
+    def codesearch_url(self) -> str:
+        return str(self.get("codesearch.url")).rstrip("/")
 
     @property
     def pull_strategy(self) -> str:

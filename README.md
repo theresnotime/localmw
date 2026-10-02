@@ -12,6 +12,7 @@ $ localmw pull --interactive
 $ localmw switch
 $ localmw cleanup
 $ localmw repo extensions/GlobalBlocking
+$ localmw codesearch getUserBlock
 ```
 
 ## Install
@@ -374,6 +375,59 @@ either would do without touching anything, and `-y/--yes` skips the prompt.
 
 Exits non-zero if an action failed.
 
+### `localmw codesearch`
+
+Searches [Wikimedia Codesearch](https://codesearch.wmcloud.org/search/) and prints the matches
+grouped by repository, with line numbers. File paths and line numbers for core, extensions and
+skins are clickable links to Gitiles, and the last line is a link to the same search in the web UI.
+It does not need a MediaWiki install, unless you pass `--installed`.
+
+```console
+localmw codesearch getUserBlock                       # everything, everywhere
+localmw codesearch -F 'wfGetDB('                      # a literal string, not a regex
+localmw codesearch -b core -f '\.php$' HookRunner     # the core index, PHP files only
+localmw codesearch -r Extension:Echo -C 2 onUserSave  # one repository, with context
+localmw codesearch --installed GlobalBlocking         # only repositories you have checked out
+```
+
+```console
+$ localmw codesearch -r Extension:BlockInactive getUserBlockTime
+Extension:BlockInactive · 3 files
+  includes/BlockInactive.php
+    205      public function getUserBlockTime( User $user ): int {
+    366              $warningTs = $this->getUserBlockTime( $user ) - $dayLeft * ( 60 * 60 * 24 );
+  maintenance/blockinactive.php
+    84              $futureBlockTime = $blockInactive->getUserBlockTime( $inactiveUser );
+  tests/phpunit/BlockInactiveTest.php
+    246       * @covers \MediaWiki\Extension\BlockInactive\BlockInactive::getUserBlockTime
+    256          $blockTime = $this->getBlockInactive()->getUserBlockTime( $u );
+
+5 matches · 3 files · 1 repository
+https://codesearch.wmcloud.org/search/?q=getUserBlockTime&files=&excludeFiles=&repos=Extension%3ABlockInactive&i=nope
+```
+
+`QUERY` is a regular expression in RE2 syntax. Several words are joined with spaces, so you only
+need quotes to protect characters from the shell. Repository names are the names Codesearch uses:
+`MediaWiki core`, `Extension:Echo`, `Skin:Vector`. `--installed` maps those names onto your install
+(`extensions/Echo`, `skins/Vector`) and shows only the repositories you have locally, with their
+local paths.
+
+| Flag | What it does |
+| --- | --- |
+| `-b, --backend NAME` | which index to search: `search` (default), `core`, `bundled`, `deployed`, `libraries`, `operations`, `puppet`, ... |
+| `-i, --ignore-case` | match case-insensitively |
+| `-F, --fixed-strings` | treat `QUERY` as a literal string |
+| `-f, --files REGEX` | only search files whose path matches `REGEX` |
+| `--exclude-files REGEX` | skip files whose path matches `REGEX` |
+| `-r, --repo NAME` | only search this Codesearch repository (repeatable) |
+| `--installed` | only show repositories checked out in the local install |
+| `-C, --context N` | lines of context around each match (default 0, at most 10) |
+| `-m, --max-files N` | most files to show per repository (default 20) |
+| `-l, --files-with-matches` | only list the matching files |
+| `--json` | machine-readable output |
+
+Exits 1 when nothing matches, like `grep`.
+
 ## Configuration
 
 `~/.config/localmw/config.json`, or `$LOCALMW_CONFIG_DIR/config.json`, or
@@ -413,6 +467,7 @@ localmw config check                           # validate, and ping Gerrit
 | `gerrit.url` | `https://gerrit.wikimedia.org/r` | Gerrit base URL |
 | `gerrit.username` | – | Gerrit username, only needed for authenticated calls |
 | `gerrit.http_password` | – | Gerrit HTTP password (Settings → HTTP Credentials) |
+| `codesearch.url` | `https://codesearch.wmcloud.org` | Codesearch base URL, used by `localmw codesearch` |
 | `pull.strategy` | `ff-only` | `ff-only`, `rebase`, or `merge` |
 | `pull.submodules` | `false` | update submodules after pulling |
 | `jobs` | `2` | repositories processed concurrently (raise it if your network is the bottleneck) |
